@@ -1,23 +1,46 @@
 use serenity::builder::CreateApplicationCommand;
 use serenity::model::prelude::command::CommandOptionType;
-use serenity::model::prelude::interaction::application_command::{
-    CommandDataOption,
-    CommandDataOptionValue
+use serenity::{
+    async_trait,
+    model::{
+        application::{ 
+            command::Command,
+            interaction::{
+                application_command::{
+                    ApplicationCommandInteraction, CommandDataOption, CommandDataOptionValue,
+                },
+                Interaction,
+                InteractionResponseType
+            }
+        },
+        channel::Message,
+    },
+    prelude::*
 };
 
-pub fn run(options: &[CommandDataOption]) -> String {
-    let option = options
-        .get(0)
-        .expect("Expected user option")
-        .resolved
-        .as_ref()
-        .expect("Expected user object");
+pub async fn run(ctx: &Context, options: &[CommandDataOption], command: &ApplicationCommandInteraction) {
+    command
+        .create_interaction_response(&ctx, |response| {
+            response
+                .kind(InteractionResponseType::ChannelMessageWithSource)
+                .interaction_response_data(|message| {
 
-        if let CommandDataOptionValue::User(user, _member) = option {
-            format!("{}'s id is {}", user.tag(), user.id)
-        } else {
-            "Please provide a valid user".to_string()
-        }
+                let option = options
+                    .get(0)
+                    .expect("Expected user option")
+                    .resolved
+                    .as_ref()
+                    .expect("Expected user object");
+
+                    if let CommandDataOptionValue::User(user, _member) = option {
+                        message.content(format!("{}'s id is {}", user.tag(), user.id))
+                    } else {
+                        message.content("Please provide a valid user".to_string())
+                    }
+                })
+        })
+        .await
+        .expect("Id retrieval failure");
 }
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
