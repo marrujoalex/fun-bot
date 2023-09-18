@@ -9,6 +9,9 @@ use serenity::{
         application::{ 
             command::Command,
             interaction::{
+                application_command::{
+                    ApplicationCommandInteraction, CommandDataOption, CommandDataOptionValue,
+                },
                 Interaction,
                 InteractionResponseType
             }
@@ -20,32 +23,15 @@ use serenity::{
     prelude::*
 };
 
+#[derive(Clone)]
 struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::ApplicationCommand(command) = interaction {
-            println!("Received command interaction: {:#?}", command);
-
-            let response_content = match command.data.name.as_str() {
-                "ping" => commands::ping::run(&command.data.options),
-                "id" => commands::id::run(&command.data.options),
-                "addrole" => commands::addrole::run(&command.data.options),
-                "removerole" => commands::removerole::run(&command.data.options),
-                _ => "not implemented :(".to_string(),
-            };
-
-            if let Err(why) = command
-                .create_interaction_response(&ctx.http, |response| {
-                    response
-                        .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(response_content))
-                })
-                .await
-            {
-                println!("Cannot respond to slash command: {}", why);
-            }
+        match interaction {
+            Interaction::ApplicationCommand(command) => self.dispatch_command(ctx, command).await,
+            _ => return,
         }
     }
 
@@ -67,6 +53,18 @@ impl EventHandler for Handler {
                 .create_application_command(|command| commands::removerole::register(command))
         })
         .await;
+    }
+}
+
+impl Handler {
+    async fn dispatch_command(&self, ctx: Context, command: ApplicationCommandInteraction) {
+        match command.data.name.as_str() {
+            "ping" => commands::ping::run(&ctx, &command.data.options, &command).await,
+            "id" => commands::id::run(&ctx, &command.data.options, &command).await,
+            "addrole" => commands::addrole::run(&ctx, &command.data.options, &command).await,
+            "removerole" => commands::removerole::run(&ctx, &command.data.options, &command).await,
+            _ => (),
+        };
     }
 }
 
